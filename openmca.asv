@@ -1,0 +1,283 @@
+function [scandata, errors] = openmca(mcafile, varargin)
+%  function scandata = openmca(mcaname [,varargin])
+%
+%  Based on mcagui-0.6/openmca, mcagui-0.6/openmca_esrf.  Can accept an
+%  'mcaformat' parameter (currently 'xflash' and 'esrf' types are allowed).
+%  If no format it specified it tries to autodetect and proceed. This
+%  will make it far easier to add different formats or different
+%  mcafile/specfile relationships.
+%
+%  mcafile    = Name of mca file.  Should be of the form <specfile>_#.mca,
+%               Optionally it can be a matlab file containing a variable called
+%               'scandata' with the structure defined below
+%
+%  varargin   = property/value pairs to specify non-default values for mca
+%               data.  Allowed properties are:
+%               'ecal'          : 1x2 array for channel # to energy conversion
+%               'MCA_channels'  :
+%               'dead'          : dead.base, dead.channels specify how to get dead
+%                                 time info
+%               'mcaformat'     : to expand allowed formats. Currently only two
+%                                 are allowed, 'esrf' and 'xflash', and these can be
+%                                 auto-detected.
+%
+%  scandata   = mca data structure combining mca, spec, and fitting data.
+%
+%  errors.code = numerical indication of type
+%               of error: 
+%               0 = none
+%               1 = scandata is empty (file not found, or scandata var
+%                   not found in matlab file)
+%               2 = scandata is present but incomplete (mca file found
+%                   but some other error condition, e.g. no spec data
+%                   or mcafile was incomplete)
+%
+%  errors.msg  = Error string
+%
+%  Opens and loads data from an mca file ('*.mca')
+%
+%  If it is a .mca file, looks for corresponding spec file to load scan
+%  parameters (e.g. scan range and the integration time).  If no spec file
+%  is found, the file is interpreted as a single mca spectrum and errors.string 
+%  will be non-empty
+%
+%  Dependencies: add_error, openspec, channel2energy, find_line, tokenize,
+%  mca_strip_pt
+%
+% -------------------------------------------------------------------------
+% -----------------         Initialization         ------------------------
+% -------------------------------------------------------------------------
+
+errors.code = 0;
+scandata = [];
+
+if nargin < 1 
+    errors=add_error(errors,1,...
+        'openmca takes at least one input -- the filename');
+    return
+elseif ~exist(mcafile)
+    errors=add_error(errors,1, ...
+        sprintf('File %s not found', mcafile));
+    return
+end
+
+nvarargin = nargin -1;
+if mod(nvarargin, 2) ~= 0
+    errordlg('Additional args to openmca_esrf must come in variable/value pairs');
+    return
+end
+MCA_channels = 1024;
+ecal = [0 1];
+
+Dead_time_base = 1048;  % counts in first 40 channels per second when there is no dead time.
+Dead_time_channels = 1:40;
+
+mcaformat = ''; % If this remains empty after processing args, code will try to autodetect
+
+for k = 1:2:nvarargin
+    switch varargin{k}
+        case 'MCA_channels'
+            if isnumeric(varargin{k+1}) || length(varargin{k+1}) == 1
+                MCA_channels = varargin{k+1};
+            end
+        case 'ecal'
+            if isnumeric(varargin{k+1})
+                ecal = varargin{k+1};
+            end
+        case 'dead'
+            if isfield(varargin{k+1}, 'base') && isfield(varargin{k+1}, 'channels') ...
+                    && length(varargin{k+1}.channels) > 1
+                Dead_time_base = varargin{k+1}.base;
+                Dead_time_channels = varargin{k+1}.channels;
+            else
+                Dead_time_base = 1;
+                Dead_time_channels = 0;
+            end
+        case 'mcaformat'
+            mcaformat = varargin{k+1};
+        otherwise
+            warndlg(sprintf('Unrecognized variable %s',varargin{k}));
+    end
+end       
+
+errors.code = 0;
+scandata=[];
+
+% -------------------------------------------------------------------------
+% -----------------   Autodetect mca format if needed     -----------------
+% -------------------------------------------------------------------------
+
+if isempty(mcaformat)
+    mcafid = fopen(mcafile, 'rt');
+    first = fgetl(mcafid);
+    if first(1) == '#'
+        % This is an mca file with spec info.  Assume form
+        % name_scann_pt.mca and look for other matching files
+        mcaformat = 'esrf';  % leave mcafile open (?!)
+    else
+        % MCA file is form specfile_scann.mca, where scann is a 1 or
+        % more digit integer.
+        mcaformat = 'xflash';
+        fclose(mcafid);
+    end
+end
+
+% -------------------------------------------------------------------------
+% --------------------------     Load MCA data      -----------------------
+% -------------------------------------------------------------------------
+
+[mcapath, mcaname, extn] = fileparts(mcafile);
+
+switch mcaformat
+    case 'esrf'
+        mcachan = tokenize(find_line(mcafid, '#@CHANN'));
+        MCA_channels = str2double(mcachan{1});
+        channels = [str2double(mcachan{2}):str2double(mcachan{3})]';
+        mcabase = mca_strip_pt(mcaname);  % mcabase has format 'specfile_scann'
+        [specfile, specscan] = mca_strip_pt(mcabase);
+
+        % Both specfile and mcabase must be non-empty for us to assume that
+        % the requested mca file is one of a set.
+        if ~isempty(specfile)
+            mcafiles = dir(fullfile(mcapath,[mcabase '_*' extn]));
+            mcafiles = {mcafiles.name}';
+        else
+            mcafiles = {mcafile};
+        end
+        for k = 1:length(mcafiles)
+            mcadata(:,k) = textread(fullfile(mcapath,mcafiles{k}), '%f', ...
+                MCA_channels, 'commentstyle' ,'shell', 'whitespace', ' \b\t@A\\');
+            % mcadata(:,k) = mcaread(fullfile(mcapath,mcafiles{k}),
+            % MCA_channels);
+        end
+        matfile = fullfile(mcapath, [mcabase '.mat']);
+    case 'xflash'
+        [specfile, specscan] = mca_strip_pt(mcaname);
+        mcadata = textread(mcafile);
+        if size(mcadata,2) > 1
+            % If more than one column, data is assumed to be the second
+            % column
+            channels = mcadata(1:MCA_channels,1);
+            mcadata = mcadata(:,2);
+        else
+            channels = 0:(MCA_channels-1);
+        end
+        mcapts = length(mcadata);
+        npts = double(int16(mcapts/MCA_channels));
+        if mod(mcapts,npts) ~= 0
+            % MCA data doesn't have an even number of spectra.
+            errors = add_error(errors, 1, ...
+                sprintf('Error: mca data file %s does not have an integer number of spectra of length %g', ...
+                mcafile, MCA_channels));
+            return
+        else
+            % No spec info, but there are at least an integer number of
+            % spectra
+            mcadata = reshape(mcadata, MCA_channels, npts);
+        end
+        matfile = strrep(mcafile, '.mca', '.mat');
+    otherwise
+        errors=add_error(errors,1,...
+            sprintf('Uncrecognized mca file format %s', mcaformat));
+        return
+end
+
+% MCA data has been loaded, so define scandata
+
+scandata.mcadata = mcadata;
+scandata.depth = 1:size(mcadata, 2);
+scandata.channels = channels; 
+scandata.mcafile = [mcaname extn];
+scandata.ecal = ecal;
+scandata.energy = channel2energy(scandata.channels, ecal);
+
+% -------------------------------------------------------------------------
+% -----------------          Load spec data         -----------------------
+% -------------------------------------------------------------------------
+% At this point mcafile and mcadata are determined. However, mcadata may
+% be reshaped if 1) a spec scan is located and has more than one point, or
+% 2) no spec file is found but the length of mcadata is an integer
+% multiple of MCA_channels.
+% -------------------------------------------------------------------------
+
+[scandata.spec, spec_err] = openspec(fullfile(mcapath,specfile), specscan);
+
+if spec_err.code == 1
+    % Demote fatal error from openspec since at this point we have
+    % successfully read in mcadata (we are just missing spec info)
+    % Oops -- currently the following message is added twice...
+    errors = add_error(errors, 2, spec_err.msg);
+    return
+end
+
+if size(mcadata, 2) ~= scandata.spec.npts
+    % scandata.spec.npts is supposed to be the number of spec data points
+    % actually read, rather than the number of points expected.  Hence this
+    % is a true error condition since the number of spec points written
+    % does not match the number of mca spectra.  This is distinct from an
+    % incomplete scan, in which case these values should match but
+    % scandata.spec.complete == 0
+    errors=add_error(errors, 1, ...
+        sprintf('Error: mcafile / specfile mismatch. Check %s for duplicate scans',specfile));
+    return
+end
+
+scandims = size(scandata.spec.data);
+
+if length(scandims)>2
+    if ~scandata.spec.complete
+        % I
+        scandata.mcadata = scandata.mcadata(MCA_channels, scandata.spec.npts)
+    end
+    scandata.mcadata=reshape(mcadata, MCA_channels, scandims(2), scandims(3));
+end
+
+scandata.specfile = specfile;
+scandata.depth = scandata.spec.var1-scandata.spec.var1(1);
+
+%Dead Time correction: MUST be caclulated after reshaping mcadata.
+if Dead_time_channels ~= 0
+%     zero_dt_cts = Dead_time_base*scandata.spec.cttime(:);
+%     dtcorr = 1.0+(zero_dt_cts-sum(scandata.mcadata(Dead_time_channels,:)))./zero_dt_cts;
+    zero_dt_cts = Dead_time_base*scandata.spec.cttime;
+    dtcorr = squeeze(1.0+(zero_dt_cts-sum(scandata.mcadata(Dead_time_channels,:,:))) ...
+        ./zero_dt_cts);
+    if size(dtcorr, 1) == 1
+        dtcorr = dtcorr';
+    end
+%    dtcorr=reshape(dtcorr, size(squeeze(scandata.spec.data(1,:,:))));
+    % The uncertainty associated with the dead time correction needs
+    % attention.  For now I will claim it is two counts divided by the
+    % total number of expected pulser counts in each time bin.  This is
+    % based on taking the standard deviation of a set of dead-time pulser
+    % measurements.
+    dtdel = (1.0+2./zero_dt_cts).*dtcorr;
+else
+    dtcorr = ones(size(scandata.spec.cttime));
+    dtdel = dtcorr;
+end
+
+scandata.dtcorr = dtcorr;
+scandata.dtdel = dtdel;
+
+% See if there is an image file available. This was implemented in April 05
+% to take advantage of a fram grabber running from spec.
+imagefile = strrep(matfile, '.mat', '.jpg');
+if exist(imagefile, 'file')
+    scandata.image = imread(imagefile);
+    [path name extn] =fileparts(imagefile);
+    scandata.imagefile = [name extn];
+end
+
+
+% matfile format is now determined farther up...
+% matfile = strrep(mcafile, '.mca', '.mat');
+if exist(matfile, 'file')
+    overwrite = questdlg(sprintf('Overwrite existing file %s?', matfile), ...
+        'Overwrite?', 'Yes', 'No', 'Yes');
+    if strcmp(overwrite, 'Yes')
+        save(matfile,'scandata');
+    end
+else
+    save(matfile,'scandata');
+end

@@ -1,0 +1,233 @@
+function [specscan, errors] = openspec(specfilename, scan_number)
+% function [specscan, error] = openspec(specfilename, scan_number)
+%
+% April 29 05 -- Now extracts scanx and scanz values from the scan 
+% header and adds these to the specscan structure.  Values of
+% SCANX_LOCATION and SCANZ_LOCATION refer to the row/column location of
+% these motor values in the scan header, and also relate directly to the
+% config file position.  These may change from run to run...
+%
+% specfilename  = Name of a spec file.
+% 
+% scan_number   = Desired scan number. 
+%
+% specscan      = structure containing info about the spec scan
+%
+% error.code = numerical indication of type
+%              of error: 
+%              0 = none
+%              1 = spec file or scan not found
+%              2 = spec scan is incomplete or other non-fatal error.
+%               
+% error.msg  = Error string
+%
+% Requires: tokenize.m (~woll/Matlab/woll), add_error
+% (~woll/Matlab/openmca), find_line
+ 
+errors.code=0;
+specscan = [];
+
+%specscan = getscan(specfilename, scan_number); % specscan = -1 of file or scan not found
+
+specfile = fopen(specfilename, 'r');
+if specfile == -1
+    errors = add_error(errors, 1, sprintf('Error: spec file %s not found',...
+        specfilename));
+    return
+end
+
+% First, find the correct scan and abort if not found
+scanline = find_scan(specfile, scan_number);
+if ~ischar(scanline)
+    errors = add_error(errors, 1, sprintf('Error: scan %d not found in %s\n', ...
+        scan_number, specfilename));
+    return
+end
+
+% We are at the correct scan.  Next extract scanx and scanz values. This
+% will be highly specific to each run.  SCANX_LOCATION and SCANZ_LOCATION
+% will have to be modified for different configurations... In these variables, 
+% the first number corresponds to the row of motor values on which that
+% motor is contatined, i.e. 1 means that that motor appears on the line
+% that begins #O1 in the data file
+% Note too that the sequence matters -- scanx is done first because it
+% appears on the row before scanz.
+
+SCANX_LOCATION = [1,1]; SCANZ_LOCATION = [1,3];
+motor_pos = tokenize(...
+    find_line(specfile, sprintf('#P%d', SCANX_LOCATION(1))));
+scanx = motor_pos{SCANX_LOCATION(2)};
+scanz = motor_pos{SCANZ_LOCATION(2)};
+
+% SCANX_LOCATION = [1,1]; SCANZ_LOCATION = [1,3];
+% scanx = tokenize(...
+%     find_line(specfile, sprintf('#P%d', SCANX_LOCATION(1))), ...
+%     SCANX_LOCATION(2));
+% scanz = tokenize(...
+%     find_line(specfile, sprintf('#P%d', SCANZ_LOCATION(1))), ...
+%     SCANZ_LOCATION(2));
+%fprintf('Scanx = %s, Scanz = %s', scanx, scanz);
+
+% Next, Load the headers file to get the column names.  This will be its
+% own field.
+headers = tokenize(find_line(specfile, '#L'));
+
+columns = length(headers);
+
+datastr = '';
+lines = 0;
+% while 1 
+%     next = fgetl(specfile);
+%     if ~ischar(next) || length(next)==0|| next(1) == '#' 
+%         %fprintf('Scan appears to be incomplete or aborted');
+%         fclose(specfile);
+%         break
+%     end
+%     datastr = [datastr ' ' next];
+%     lines = lines+1;
+% end
+
+data_cell = textscan(specfile, '%f');
+data=data_cell{1};
+
+aborts = 0;
+msgs=textscan(fgetl(specfile), '%s');
+msgs=msgs{1};
+while all(strcmp({msgs{1} msgs{8}}, {'#C' 'aborted'}))
+    aborts = aborts + 1;
+    abort.line(aborts) = length(data)/columns;
+    data_cell=textscan(specfile, '%f');
+    data = [data' data_cell{1}']';
+    msgs=textscan(fgetl(specfile), '%s');
+    msgs=msgs{1};
+end
+ 
+fclose(specfile);
+
+lines = length(data)/columns;
+specscan.data = reshape(data, columns, lines);
+
+specscan.scanline = scanline;
+specscan.npts = lines;
+specscan.columns = columns;
+specscan.scanx = scanx;
+specscan.scanz = scanz;
+
+specscan.headers = headers;
+%specscan.data = reshape(sscanf(datastr, '%f'), columns, lines);
+
+
+scan_pars = tokenize(specscan.scanline);
+
+scan_type = char(scan_pars{1});
+
+specscan.cttime = str2double(scan_pars{end});
+if specscan.cttime <= 0
+    cttime_col = find(specscan.headers, 'sec',1);
+    specscan.cttime = data(cttime_col,:);
+end
+
+% Notes about reading scans: Use #N for number of columns.
+% Take care of monitor counting later.  Don't forget to read in
+% the date.
+specscan.complete = 1;
+switch scan_type
+    case 'ascan'
+        %start_pos = sscanf(specscan.scan_pars{3}, '%f' );
+        %end_pos   = sscanf(spec.scan.scan_pars{4}, '%f');
+        %scan_dist = end_pos - start_pos;
+
+        specscan.var1 = specscan.data(1,:);
+        
+        planned_npts = str2double(scan_pars{5})+1;
+        if planned_npts ~= specscan.npts
+            specscan.complete = 0;
+        end
+    case 'smesh'
+        var1_n = str2double(scan_pars{7})+1;        
+        var2_n = str2double(scan_pars{11})+1;
+        planned_npts = var1_n*var2_n;
+%         offset = 0;
+%         for k=1:aborts            
+%             abort.nbad(k) = mod(abort.line(k)-abort.offset(k),var1_n);
+%             abort.offset(k)=sum(abort.nbad(1:k-1));            
+%         end
+%         bad = [];
+%         for k=1:aborts
+%             curr = aborts-k+1;
+%             bad = [bad abort.line(curr)-abort.nbad(curr)-offset+1:...
+%                 abort.line(curr)-offset]
+% %             specscan.data(:,...
+% %                 abort.line(curr)-abort.nbad(curr)-offset+1:...
+% %                 abort.line(curr)-offset)=[];
+%         end
+% 
+%         specscan.data(:, bad) = []
+        %specscan.npts = size(specscan.data, 2);
+            
+        specscan.var1 = specscan.data(1,1:var1_n);
+        specscan.var2 = specscan.data(2,1:var1_n:end);
+        if planned_npts ~= specscan.npts
+            specscan.complete = 0;
+            if mod(specscan.npts, var1_n) ~= 0
+                specscan.var2(end) = []; 
+                var2_n = length(specscan.var2);
+                specscan.npts = var1_n*var2_n;
+            else
+                var2_n = length(specscan.var2);
+            end
+            specscan.data=reshape(specscan.data(:,1:specscan.npts), ...
+                columns, var1_n, var2_n);
+            if length(specscan.cttime)>1
+                specscan.cttime = specscan.data(cttime_col, :, :);
+            end
+        else
+            specscan.data=reshape(specscan.data,columns, var1_n, var2_n);
+            if length(specscan.cttime)>1
+                specscan.cttime = reshape(specscan.cttime, var1_n, var2_n);
+            end
+        end
+    case 'mesh'
+        % This code is now behind that of smesh & should be updated...
+        var1_n = str2double(scan_pars{5})+1;
+        specscan.var1 = specscan.data(1,1:var1_n);
+        var2_n = str2double(scan_pars{9})+1;
+        planned_npts = var1_n*var2_n;
+        if planned_npts ~= specscan.npts
+            specscan.complete = 0;
+        else
+            specscan.var2 = specscan.data(2,1:var1_n:end);
+            specscan.data=reshape(specscan.data,columns, var1_n, var2_n);
+            if length(specscan.cttime)>1
+                specscan.cttime = reshape(specscan.cttime, var1_n, var2_n);
+            end
+        end
+    case 'tseries'
+        specscan.var1 = specscan.data(1,:);
+        planned_pts = str2double(scan_pars{2});
+        if planned_pts > 0 && planned_pts ~= specscan.npts
+            specscan.complete = 0;
+        end
+    otherwise
+        errors=add_error(errors,1,sprintf('Error: Unrecognized scan type, scan %g in %s',...
+            scan_number, specfilename));
+        return
+end % -------- switch -------------
+
+
+function scanline = find_scan(specfile, scan)
+% Assumes specfile is alredy open. Makes no noise if the scan is not found.
+while 1
+    textline=find_line(specfile, '#S');
+    if ~ischar(textline)
+        break
+    end
+    [S, textline] = strtok(textline);
+    if strcmp(S, sprintf('%d', scan))
+        scan_found = 1;
+        textline = textline(find(textline~=' ',1):end);
+        break
+    end
+end
+scanline = textline;
+

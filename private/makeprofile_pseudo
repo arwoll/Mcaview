@@ -1,0 +1,40 @@
+* IF handles.roi_index == 0 return
+* IF mode == new and delta_ROI (NEW ROI IS DRAWN)
+  target_index = length(scandata.roi)+1 
+  Copy  handles.roi_rect, d_roi, e_roi and handles.roi_state
+  to new_roi. 
+  new_eprof = 1;
+  if handles.profile_select neq 'energy', type = handles.current_type
+  else type = [];
+  make new_roi.eprof
+  if ~isempty(type)
+    make new_roi.(type) 
+%  Finally, append this roi to scandata:  
+  scandata.roi(target_index) = new_roi.  
+* elseif mode == edit and (handles.roi_show neq handles.roi_index (DUPLICATE))
+  1. scandata.roi(end+1) = scandata.roi(handles.roi_index)
+  2. Clear all profiles exepct the energy profile and the profile
+  coresponding to type (handles.current_profile_type)
+  3. Return
+* else if there are any differences between handles roi_state tags and scandata.roi(handles.roi_index).roi_state or a change in the ROI, then (EDIT CURRENT)
+  target_index = handles.roi_index;
+** case 1: handles.roi_rect neq handles.scandata.roi(handles.roi_index).roi_rect
+   ROI has changed. same code as delta_ROI and mode = new, only target_index
+   changed.
+** case 2: type neq scandata.roi.roi_state.profile_select.value and handles.profile_select neq 'energy'
+   In this case, the only difference is that the profile selection has
+   changed. We only act if the new profile type is not energy, since
+   we already have an energy profile.  If it is not energy, then we
+   first check scandata.roi.(profile_type) against the current values
+   of var2page and var3page. If there is a match, then we don't have
+   to do anything since the desired profile already exists.  Otherwise
+   we make a new profile of the current type
+** If var2page or var3page are different from scandata.roi(current).page2, page3
+   gen_e = follow energy?
+** if type = depth && var2page, var3page different from any of those of scandata.roi(current).(type).page2, page3
+   generate desired type if it does match a current, existing one...
+   if ~follow_depth
+      type = [];
+** if type = {'xy','xz','yz'} && var2page, var3page don't match any existing pairs in roi(current)
+   if ~follow_area
+      type = [];

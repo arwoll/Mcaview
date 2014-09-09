@@ -1,0 +1,774 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  <title>MCAVIEW TODO</title>
+</head>
+
+
+<body>
+
+
+
+
+
+
+
+<big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#990000"><strong>MCAVIEW PROJECT TO DO</strong></font></small></small></big></big></big>
+<p><font size="4">STATUS &nbsp;-- April 8 2009. Things stagnated a bit
+after doing initial analysis of Wyeth data in 2007. No new confocal
+data in 2008. &nbsp;Note that I taught in the fall of 2008 which killed
+half the year. &nbsp;Oh, and Lucy was born which probably put a (happy)
+dent in productivity in the spring of 2008.</font></p>
+<p>For a variety of reasons I was resurrecting mcaview now (in 2009)
+and wanted to check the status. The current version is definitely 0.99,
+which has a number of small improvements to 0.98. It also reads mcadata
+as uint16 which makes sense to me but possibly makes old mcadata
+incompatible (but this does not seem to be the case). Note however that
+openspec does NOT do this with its mcadata, so currently there is a
+discrepency -- which may or may not cause problems.</p>
+Notes:1. openspec is maintained as a separate folder at the same level as mcaview (in ~/Matlab/woll_xrf). <br>
+2. Version 0.98 was, I think, the last version set up for Noelle, which
+may be the reason I thought is was the more used branch and that 0.99
+was stale.
+<p><font size="4">Arthur Woll -- version 0.99 --
+Started 24 July 2007</font></p>
+
+
+
+
+
+
+
+<p>Version 0.99 implements several small improvements, but was prompted
+mostly to handle larger data sets (mcadata now loaded as uint16) and a
+new scan type, 'fastmesh'. &nbsp;One new feature is &nbsp;a menu option
+to auto-update all profiles of a given type when moving to a new page. &nbsp;Also, version 0.99
+implements pre-allocation for mcadata load, textscan instead of
+textread for mcadata, and a new filter in openspec to load 'fastmesh'
+scans...</p>
+
+
+
+
+<hr noshade="noshade" width="100%">
+<p>KEY:</p>
+
+
+
+
+
+
+
+<ul>
+
+
+
+
+
+
+
+  <li><strong><font color="#990000">RED BOLD</font></strong>:
+Planned change to current version </li>
+
+
+
+
+
+
+
+  <li><font color="#990000">RED:</font>
+Planned for next version </li>
+
+
+
+
+
+
+
+  <li>BLACK: Unknown time scale </li>
+
+
+
+
+
+
+
+  <li><font color="#009900">GREEN:</font> Done
+  </li>
+
+
+
+
+
+
+
+</ul>
+
+
+
+
+
+
+
+<hr noshade="noshade">
+		
+<p><big style="color: rgb(153, 0, 0);"><strong><font color="#990000" size="+1">Bugs</font></strong></big></p>
+
+
+
+
+		
+
+
+
+		
+<p><big style="color: rgb(153, 0, 0);"><strong><font color="#990000" size="+1">General</font></strong></big></p>
+
+
+
+
+		
+
+
+
+		
+<p><big style="color: rgb(153, 0, 0);"><strong><font color="#990000" size="+1">Todo (rough order)</font></strong></big></p>
+
+
+
+
+		
+<ol>
+
+  <li style="color: rgb(0, 153, 0);">Try to implement uint16s as the data type for mcadata...</li>
+
+  <li><span style="color: rgb(204, 0, 0);"><font color="#990000"><span style="color: rgb(0, 153, 0);">add fastmesh to openspec</span><br>
+
+    </font></span></li>
+
+  <li><span style="color: rgb(204, 0, 0);"><font color="#990000">Menu option to look for a more recent *.mat file and load instead of the *.mca file when loading a scan...</font></span>
+			</li>
+
+
+
+  <li><span style="color: rgb(204, 0, 0);"><font color="#990000">A
+'comparison' gui that loads only the ROI info from an exisiting *.mat
+file and plots one of its energy/depth profiles (selectable). There can
+be more than one of these. Only the energy and area profiles will be
+checked.</font></span>
+			</li>
+
+
+
+  <li><span style="color: rgb(204, 0, 0);"><font color="#990000">If openmca detects type &lt;specfile&gt;_###.mca and scan number &gt; 99, then both chess3 and chess1 should be options.</font></span>
+			</li>
+
+
+
+  <li><font color="#990000">Make image update turn off if files have no images..</font>
+			</li>
+
+
+
+  <li><font color="black">Add Gaussian + linear bkgd. Should this fit the bkgd points separately? Might be more consistant...</font></li>
+
+</ol>
+
+
+
+
+		
+<p><big style="color: rgb(153, 0, 0);"><big><big><small><small><strong><font color="#990000" size="+1">Profiles</font></strong></small></small></big></big></big></p>
+
+
+
+
+		
+<p><strong><font color="#990000"><font size="+1">Analysis</font></font></strong></p>
+
+
+
+
+		
+<ul>
+
+
+
+
+
+
+
+  <li style="color: rgb(153, 0, 0);">More sensible / easy
+to use energy calibration.</li>
+
+
+
+
+
+
+
+  <li style="font-weight: bold; color: rgb(153, 0, 0);"><span style="font-weight: normal;">Optionally, associate ROI with
+a particular elemental line...</span></li>
+
+
+
+
+
+
+
+  <li><font color="black">Show positions of
+elemental lines (require input energy)</font></li>
+
+
+
+
+
+
+
+</ul>
+
+
+
+
+		
+<p><strong><font color="#990000"><font size="+1">File Input</font></font></strong></p>
+
+
+
+
+		
+<ul>
+
+
+
+
+			<li><font color="#990000">MCAMODE IN SPEC: For
+VORTEX: config file names must be
+placed in mca / spec data file.&nbsp;preferably, this can i</font><font color="#990000">nclude tau.</font></li>
+
+
+
+
+			<li><font color="#990000">Edit openspec to handle
+arbitrary mca, mcs fields. Name structure files using @ string in spec
+file</font></li>
+
+
+
+
+			<li style="color: rgb(0, 153, 0);"><font color="#990000">optional
+output arguments from openspec, openmca consisting of the file position
+at last read. This would, in principle, make it possible to have
+mcaview efficiently update until the scan is done or aborted. </font></li>
+
+
+
+
+		
+</ul>
+
+
+
+
+		
+<p><strong><font color="#990000"><font size="+1">MCA &amp; Profile Plot Windows</font></font></strong></p>
+
+
+
+
+		
+<ul>
+
+
+
+
+			<li><font color="#990000">Need zoom / <span style="color: rgb(0, 102, 0);">brightnes</span>s
+control in MCA plot-- particularly for multi-element data</font> </li>
+
+
+
+
+		
+</ul>
+
+
+
+
+		
+<p><strong><font color="#990000"><font size="+1">File Output</font></font></strong></p>
+
+
+
+
+		
+<ul>
+
+
+
+
+
+
+
+  <li><font color="black">Generalized edf output --
+to include one or multiple spectra -- include all scan info.</font></li>
+
+
+
+
+
+
+
+  <li><font color="black">Text output of indivivual
+spectra and profiles.</font> </li>
+
+
+
+
+
+
+
+</ul>
+
+
+
+
+		<font color="black">
+ </font>
+		
+<p><big style="color: rgb(153, 0, 0);"><big><big><small><small><strong><font color="#009900" size="+1">Changes Since 0.91:</font></strong></small></small></big></big></big></p>
+
+
+
+
+		
+<ul>
+
+
+
+
+			<li style="color: rgb(0, 153, 0);"><big style="color: rgb(153, 0, 0);"><strong><font color="#009900">Open recent -- only enable when non-empty</font></strong></big>
+			</li>
+
+
+
+  <li style="color: rgb(0, 153, 0);"><font color="#009900">Perhaps
+complete could be set to -1 if a subsequent scan is found in the data
+file, since this precludes the scan from being continued...</font>
+			</li>
+
+
+
+  <li style="color: rgb(0, 153, 0);"><strong>File formats+dead time correction</strong>
+			</li>
+
+
+
+  <li><font color="#009900"><strong>button to make a separate figure from either of the two lower panels...</strong></font>
+			</li>
+
+
+
+  <li><font color="#009900">Axis labels in profile plot (esp when doing 2D profiles of 3D plots </font>
+			</li>
+
+
+
+  <li><font color="#009900">Eliminate the profile chooser for 2D plots. It is redundant.</font>
+			</li>
+
+
+
+  <li><font color="#009900">Modify or eliminate dead-time settings menu...<br>
+
+
+
+
+				</font>
+			</li>
+
+
+
+  <li><font color="#009900">Use mcaformat for incrementing/decrementing scan number.</font>
+			</li>
+
+
+
+  <li style="font-weight: bold;"><big><font color="#009900">Use gaussian fit for COM, FWHM, in depth profiles.</font></big>
+			</li>
+
+
+
+  <li style="font-weight: bold;"><strong><font color="#990000"><span style="color: rgb(0, 153, 0);">Sanitize &amp; separate file format &amp; dead time settings.</span> </font><font style="font-weight: normal;" color="black"><span style="color: rgb(0, 153, 0);">Make dead time model flexbile. Keep defaults.</span> </font><font style="font-weight: normal;" color="#009900">Defaults include model for incrementing to next / previous scan.&nbsp;</font></strong><strong style="color: rgb(0, 153, 0);">For vortex, need to be able to specify tau. Also, detector defaults (config files)</strong>
+			</li>
+
+
+
+  <li style="font-weight: bold;"><font color="#009900">Input multiple-mca data (Judson) </font>
+			</li>
+
+
+
+  <li style="font-weight: bold;"><big><font color="#009900">Background
+subtraction: can choose linear, quad back-ground estimation methods,and
+pick left, right-hand background points with mouse.</font></big>
+				
+    
+    
+    
+    <ul>
+
+
+
+
+					<li style="font-weight: bold;"><big><big><big><small><small><font color="#009900">Write find_peaks -- extn of find_peak for multiple columns</font></small></small></big></big></big>
+					</li>
+
+
+
+      <li style="font-weight: bold;">
+					</li>
+
+
+
+      <li><span style="color: rgb(0, 153, 0);">In makeprofile, add code
+to load/check bksub channels when bksub mode is 3 or 4. (sensible
+default -- say to first 5 points from either side?) &nbsp;Make
+'compare' data for bksub when appropriate.</span>
+					</li>
+
+
+
+      <li><font color="#009900">Pick left, right-hand bkgd points with mouse.</font><font color="#990000"> </font>
+				</li>
+
+
+
+    
+    
+    
+    </ul>
+
+
+
+
+			</li>
+
+
+
+  <li style="color: rgb(153, 0, 0); font-weight: bold;"><big><big><big><small><small><span style="color: rgb(0, 153, 0);">ROIs management will change. </span>&nbsp;<span style="color: rgb(0, 153, 0);">Their extents will be dispayed as thin rectangles in plot window</span></small></small></big></big></big>
+				
+    
+    
+    
+    <ul>
+
+
+
+
+					<li><font color="#009900">Associate colors with rois? Show in both views</font>
+					</li>
+
+
+
+      <li><font color="#009900">Add code to make ROI rectangles persistent &amp; highlight current ROI?</font>
+					</li>
+
+
+
+      <li><font color="#009900">Try interspersing 1d/2d/3d rois together? All rois may need to have all fields. (z,v, compare, stats, etc). </font>
+					</li>
+
+
+
+      <li><font color="#009900">Add norm_to_ctr callbacks and code in makeprofile to use norm. &nbsp;</font>
+					</li>
+
+
+
+      <li><font color="#009900">Try making showplots figure (showing bksub fits) persistant.</font>
+					</li>
+
+
+
+      <li><font color="#009900">Fix profile plot settings -- current vs. all (replaces hold),</font><font color="#990000"> </font><font color="#009900">norm, log, interp.</font>
+					</li>
+
+
+
+      <li><span style="color: rgb(0, 153, 0);">Update energy plot when switching from calibrated to uncalibrated...</span>
+					</li>
+
+
+
+      <li><font color="#009900">In mcaview_update, set the Energy String...</font>
+					</li>
+
+
+
+      <li><font color="#009900">Add scan number, scan string, completed spectra stuff</font>
+					</li>
+
+
+
+      <li><font color="#009900">Add enable/disable update button</font>
+					</li>
+
+
+
+      <li><font color="#009900">Add import_data code to put headers into norm_str (already?)</font>
+				</li>
+
+
+
+    
+    
+    
+    </ul>
+
+
+
+
+			</li>
+
+
+
+  <li style="color: rgb(153, 0, 0); font-weight: bold;"><big><big><big><small><small><span style="color: rgb(0, 153, 0);">ROIs can be edited, removed (not show above)</span><br>
+
+
+
+
+								</small></small></big></big></big>
+			</li>
+
+
+
+  <li><big style="color: rgb(153, 0, 0); font-weight: bold;"><big><big><small><small><font color="#009900">Also, add stats to profiles.</font></small></small></big></big></big>
+			</li>
+
+
+
+  <li><font color="#009900">Show scan #&nbsp; and the scan string in display</font><br>
+
+
+
+
+			</li>
+
+
+
+  <li>
+			</li>
+
+
+
+  <li><font color="#009900">Remove directory pane from main window. </font>
+		</li>
+
+
+
+</ul>
+
+
+
+
+		
+<ul>
+
+
+
+
+
+
+
+  <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">External image pane. Is turned on and off
+with View-&gt;Images menu option...</font></small></small></big></big></big>
+    
+    
+    
+    
+    
+    
+    <ul>
+
+
+
+
+
+
+
+      <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">slider
+callback is called twice with java mode in mac. The bug is probably
+fixed in release 2006a. In this version, we call feature('javafigures',
+0) or somesuch within mcaview to turn java off.</font></small></small></big></big></big>
+      </li>
+
+
+
+
+
+
+
+      <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">Used findobj to locate the correct spyglass
+figure</font></small></small></big></big></big>
+      </li>
+
+
+
+
+
+
+
+      <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">I no longer allow multiple instances of
+mcaview for claritty (esp wrt the image pane).</font></small></small></big></big></big>
+      </li>
+
+
+
+
+
+
+
+    
+    
+    
+    
+    
+    
+    </ul>
+
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+
+  <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">Open recent (in File menu). </font></small></small></big></big></big>
+    
+    
+    
+    
+    
+    
+    <ul>
+
+
+
+
+
+
+
+      <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><font color="#009900">Learned:
+how to construct a uimenu object without guide: constructing multi-line
+callback strings, passing the correct object. Since this code is not
+located in the mcaview m-file, it cannot see the private directory.
+Hence I had to call mcafile_select_callback in order to import data.</font></small></small></big></big></big>
+      </li>
+
+
+
+
+
+
+
+    
+    
+    
+    
+    
+    
+    </ul>
+
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+
+  <li><big style="color: rgb(153, 0, 0);"><big><big><small><small><span style="color: rgb(0, 153, 0);">Background subtraction:</span><strong style="color: rgb(0, 153, 0);"> </strong><span style="color: rgb(0, 153, 0);">MORE OPTIONS. &nbsp;show
+statistics on -- e.g. chi-square, or page thru plots.&nbsp;</span></small></small></big></big></big>
+  </li>
+
+
+
+
+
+
+
+  <li><big><big><big><small><small><font color="#009900">show 'wait' bar during background
+subtraction operation -- show % complete</font></small></small></big></big></big>
+  </li>
+
+
+
+
+
+
+
+  <li><big><big><big><small><small><strong style="color: rgb(0, 153, 0);">ACCUMULATE / SAVE PROFILES TO
+SCANDATA,</strong>,
+with fields taken from the type of profile:e.g.
+scandata.(eval(profiles(1).type)). &nbsp;These will be stored with
+scandata and reloaded upon loading the .mat file.
+&nbsp;Complications
+are 1) when loading, what to do with existing profiles (if hold is on).
+If multiple profiles can be plotted together, then we have to decide
+when a profile gets accumulated or not. <strong>Also, warn user
+when opening a new scan about re-saving profiles to current scan...</strong></small></small></big></big></big>
+  </li>
+
+
+
+
+
+
+
+</ul>
+
+
+
+
+		<span style="color: rgb(0, 0, 0);"></span>
+</body>
+</html>

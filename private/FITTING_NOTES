@@ -1,0 +1,37 @@
+% Notes on Gaussian fitting:
+%    Tried a bunch of variations on Gaussian fitting to speed up the
+%    results of background subtraction.  Fastest results (by about a factor
+%    2) were obtained using lsqcurvefit.  A disadvantage of this technique
+%    is that there is no built in facility for using weights.  I tried
+%    emplying weights as an additional parameter to lsqcurvefit (additional
+%    parameters beyond options are passed directly to the objective
+%    function), but this slowed the function by almost a factor of 10.
+%    (from 0.065 to 0.4 seconds for a particular test).  Note that using
+%    user-supplied jacobians made very little difference in the time
+%    (perhaps 5-10%)
+%
+%    Addendum 1: The factor of 10 turned out to be due to an increase in the
+%    number of iterations for the fit to converge. This, in turn, was due
+%    to the fact that parameter estimation doesn't work very well when the
+%    model most return the model * the weights...
+%
+%    The best alternative to lsqcurvefit is fit, which does have a weights
+%    option. However this was about a factor two slower (0.11-0.14 sec)
+%    than the average time for lsqcurvefit.  On the other hand, for the
+%    second part of background subtraction routine -- for which the center
+%    and fwhm are fixed, we can use 'fit' to create a linear model in the
+%    exponential term.  This is much faster than nonlinear fitting, and has
+%    been implemented (with weights) below.
+%
+%    I am now using the curve fitting toolbox for both fits, as the best
+%    compromise, since it is fairly fast and handles weights
+%    properly and simply.
+%
+%    Next step would be to implement background subtraction for the area
+%    plots.
+%
+%    Addendum 2: compiled version failed when using gaussbk and gauss
+%    within the fittype definition for fitting (depth profiles).  They
+%    could most likely be used if these two functions were compiled
+%    separately, for example into a library.  As the quicker solution I
+%    have simply written out the two functions explicitly.
