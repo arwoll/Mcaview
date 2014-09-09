@@ -52,6 +52,8 @@ elseif strcmp(extn, '.xml')
     [scandata, errors] = bessy_xml_parse(fullname);
 % elseif strcmp(extn, '.asc')
 %     [scandata, errors] = open_id20_mda(fullname);
+elseif strcmp(extn, '.hdf5')
+    [scandata, errors] = hdf5_parse(fullname);
 else
     % The function openmca can now handle property/value pairs to specificy
     % such as MCA_channels, mcaformat, ecal, and dead time parameters... In
