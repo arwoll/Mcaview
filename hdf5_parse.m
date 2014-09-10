@@ -14,6 +14,10 @@ fileinfo = h5info(mcafile);
 % Probably should grab some of the header info here...
 
 filegroup = fileinfo.Groups.Name;
+if ~isempty(strfind(filegroup, '1D'))
+    spec.dims = 1;
+elseif ~isempty(strfind(filegroup, '2D'))
+    spec.dims = 2;
 
 [mcapath, mcaname, extn] = fileparts(mcafile);
 
@@ -30,6 +34,15 @@ scandata = struct('spec', spec, 'mcadata',[], 'mcaformat', 'aps_hdf5', 'dead', s
     'specfile',[mcaname extn], 'dtcorr', [], 'dtdel', [], 'image', {{}});
 
 %%
+filegroup = fileinfo.Groups.Name;
+if ~isempty(strfind(filegroup, '1D'))
+    spec.dims = 1;
+elseif ~isempty(strfind(filegroup, '2D'))
+    spec.dims = 2;
+end
+
+[mcapath, mcaname, extn] = fileparts(mcafile);
+
 mcadata = h5read(mcafile, [filegroup '/' 'MCA 1']);
 scandata.ecal = [0 1 0];
 header_cell = h5readatt(mcafile, filegroup, 'Header');
@@ -45,15 +58,19 @@ channels = (0:(MCA_channels-1))';
 scandata.spec.header = header;
 scandata.spec.npts = spectra;
 scandata.spec.size = spectra;
+
+% The detectors array happens to be stored in column format, but mcaview
+% expects row format. So transpose.
 scandata.spec.data = h5read(mcafile, [filegroup '/' 'Detectors']);
+scandata.spec.data = scandata.spec.data';
 scandata.spec.columns = size(scandata.spec.data, 2);
 scandata.spec.headers = h5readatt(mcafile, [filegroup '/' 'Detectors'], 'Detector Names');
 scandata.spec.ctrs = scandata.spec.headers;
 scandata.spec.motor_names = {'mot1', 'mot2'};
 scandata.spec.motor_positions = [0 1];
-mot1_cell = h5readatt(mcafile, [filegroup '/' 'X Positions'], 'Motor Info');
+mot1_cell = h5readatt(mcafile, [filegroup '/X Positions'], 'Motor Info');
 scandata.spec.mot1 = mot1_cell{1};
-scandata.spec.var1 = h5read(mcafile, [filegroup '/' 'X Positions']);
+scandata.spec.var1 = column(double(h5read(mcafile, [filegroup '/X Positions'])));
 
 scandata.mcadata = single(mcadata);
 scandata.depth = 1:size(mcadata, 2);
