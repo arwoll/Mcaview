@@ -1,10 +1,12 @@
-function [scandata, errors] = hdf5_parse(mcafile)
-% function [scandata, errors] = hdf5_parse(mcafile)
-% Very simple-minded parser for APS HDF5 format.
-% Data groups appear to be either '/1D Scan' or  '/2D Scan'. XANES may have
-% a different name. 
-% NOTE : h5disp, etc. not available in Matlab 2010. Not sure when it
-% originated. 
+function [scandata, errors] = open_id20_hdf5(mcafile)
+% function [scandata, errors] = open_id20_hdf5(mcafile)
+% Parser for APS HDF5 format. 
+%
+% NOTES: 
+%   1. Data groups appear to be either '/1D Scan' or  '/2D Scan'. XANES may have
+%      a different name. 
+%   2. h5disp, etc. not available in Matlab 2010. Not sure when it
+%      originated. 
 %
 % h5disp('mncal_ge2um_A_2D.0002.hdf5')
 % HDF5 mncal_ge2um_A_2D.0002.hdf5 
@@ -37,11 +39,10 @@ function [scandata, errors] = hdf5_parse(mcafile)
 %
 %
 % TODO :
-%   1. Make 2D dimensions all work as expected. Note that scandata.spec.var1
-%   appears to be transpose of expected.
-%   2. Add in read for 2nd axis dims in a 2D scan.
-%   3. parse the header for ion chamber info, cttime, energy, etc.
-%   4. Tell Dale & Robert to add in the darn ecal to the hdf5 file!
+%   1. parse the header for ion chamber info, cttime, energy, etc.
+%   2. Ask Dale & Robert to add include Energy Calibration in hdf5 file!
+%
+% Requires : column.m, add_error.m
 
 h = msgbox('Loading MCA data from, please wait...(patiently)', 'Open', 'warn');
 errors.code = 0;
@@ -158,7 +159,18 @@ elseif scandata.spec.dims == 2
     % I want both to be [N_X x N_Y]
     scandata.spec.var1 = squeeze(double(h5read(mcafile, [filegroup '/X Positions'])));
     scandata.spec.var2 = double(h5read(mcafile, [filegroup '/Y Positions']));
-    if all(size(scandata.spec.var2) == [
+    if all(size(scandata.spec.var2) == [scandata.spec.size(2) 1])
+        scandata.spec.var2 = repmat(scandata.spec.var2', scandata.spec.size(1), 1);
+    else
+        errors = add_error(errors, 1, ...
+            sprintf('Error reading hdf5: Dimenion of Y Positions in HDF5 file %s not as expected...\n',mcafile));
+        return
+    end
+    if any(size(scandata.spec.var1) ~= size(scandata.spec.var2))
+        errors = add_error(errors, 1, ...
+            sprintf('Error reading hdf5: making dimensions of var2 / Y Positions agree with var1 / X Positions\n'));
+        return
+    end
 else
     errors = add_error(errors, 2, ...
         sprintf('Error reading %s: Cannot handle > 2D scans', mcafile));

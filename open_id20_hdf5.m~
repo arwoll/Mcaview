@@ -1,4 +1,4 @@
-function [scandata, errors] = hdf5_parse(mcafile)
+function [scandata, errors] = open_id20_hdf5(mcafile)
 % function [scandata, errors] = hdf5_parse(mcafile)
 % Very simple-minded parser for APS HDF5 format.
 % Data groups appear to be either '/1D Scan' or  '/2D Scan'. XANES may have
@@ -37,11 +37,8 @@ function [scandata, errors] = hdf5_parse(mcafile)
 %
 %
 % TODO :
-%   1. Make 2D dimensions all work as expected. Note that scandata.spec.var1
-%   appears to be transpose of expected.
-%   2. Add in read for 2nd axis dims in a 2D scan.
-%   3. parse the header for ion chamber info, cttime, energy, etc.
-%   4. Tell Dale & Robert to add in the darn ecal to the hdf5 file!
+%   1. parse the header for ion chamber info, cttime, energy, etc.
+%   2. Ask Dale & Robert to add include Energy  the darn ecal to the hdf5 file!
 
 h = msgbox('Loading MCA data from, please wait...(patiently)', 'Open', 'warn');
 errors.code = 0;
