@@ -1,5 +1,0 @@
-The following files are required by msgbox_nobutton.m, which is a
-slightly modified version of the builtin function msgbox.m
-
-getnicedialoglocation.m
-setdefaultbutton.m

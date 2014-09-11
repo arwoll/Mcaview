@@ -1,3 +1,0 @@
-woll_uigetfile, uiputfile were remnants from an earlier version. I vaguely recall 
-that they modified the native matlab handling of filters. But these cause versions 
-R2010b and later to crash.

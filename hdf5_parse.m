@@ -117,14 +117,16 @@ scandata.ecal = [0 1 0];
 header_cell = h5readatt(mcafile, filegroup, header_att);
 header = header_cell{1};            % Should be a big header string...
 
-MCA_channels = size(mcadata, 1);
 mcadata_dims = size(mcadata);   % Expect this to be MCA_channels x D1, or MCA_channels x D1 x D2
-spectra = prod(mcadata_dims(2:end));
+MCA_channels = mcadata_dims(1);
+scandata.spec.size = mcadata_dims(2:end);
+spectra = prod(scandata.spec.size);
+
 channels = (0:(MCA_channels-1))';
 
 scandata.spec.header = header;
 scandata.spec.npts = spectra;
-scandata.spec.size = spectra;
+
 
 % The detectors array happens to be stored in column format, but mcaview
 % expects row format. So transpose.
@@ -137,9 +139,8 @@ scandata.spec.motor_names = {'mot1', 'mot2'};
 scandata.spec.motor_positions = [0 1];
 mot1_cell = h5readatt(mcafile, [filegroup '/X Positions'], 'Motor Info');
 scandata.spec.mot1 = mot1_cell{1};
-scandata.spec.var1 = column(double(h5read(mcafile, [filegroup '/X Positions'])));
 
-if dims == 1 
+if scandata.spec.dims == 1 
     if size(scandata.spec.data, 1) == scandata.spec.npts && ...
         size(scandata.spec.data, 2) == scandata.spec.columns   
         scandata.spec.data = scandata.spec.data';
@@ -148,7 +149,33 @@ if dims == 1
             sprintf(['Warning: In %s, I was expecting detectors data to be permuted, ' ...
             'but it does not seem to be. Check?\n'],mcafile));
     end
+    scandata.spec.var1 = column(double(h5read(mcafile, [filegroup '/X Positions'])));
+elseif scandata.spec.dims == 2
+    mot2_cell = h5readatt(mcafile, [filegroup '/Y Positions'], 'Motor Info');
+    scandata.spec.mot2 = mot2_cell{1};
+    % For some reason, X Positions are dimensioned as [1 x N_X x N_Y], but
+    % Y Positions are dimensioned as [N_Y x 1]. 
+    % I want both to be [N_X x N_Y]
+    scandata.spec.var1 = squeeze(double(h5read(mcafile, [filegroup '/X Positions'])));
+    scandata.spec.var2 = double(h5read(mcafile, [filegroup '/Y Positions']));
+    if all(size(scandata.spec.var2) == [scandata.spec.size(2) 1])
+        scandata.spec.var2 = repmat(scandata.spec.var2', scandata.spec.size(1), 1);
+    else
+        errors = add_error(errors, 1, ...
+            sprintf('Error reading hdf5: Dimenion of Y Positions in HDF5 file %s not as expected...\n',mcafile));
+        return
+    end
+    if any(size(scandata.spec.var1) ~= size(scandata.spec.var2))
+        errors = add_error(errors, 1, ...
+            sprintf('Error reading hdf5: making dimensions of var2 / Y Positions agree with var1 / X Positions\n'));
+        return
+    end
+else
+    errors = add_error(errors, 2, ...
+        sprintf('Error reading %s: Cannot handle > 2D scans', mcafile));
 end
+
+
 
 scandata.mcadata = single(mcadata);
 scandata.depth = 1:size(mcadata, 2);
