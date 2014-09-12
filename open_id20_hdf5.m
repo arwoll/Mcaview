@@ -7,6 +7,9 @@ function [scandata, errors] = open_id20_hdf5(mcafile)
 %      a different name. 
 %   2. h5disp, etc. not available in Matlab 2010. Not sure when it
 %      originated. 
+%   3. It's too bad that the datafile doesn't include the energy
+%      calibration used during data acquisition. 
+% 
 %
 % h5disp('mncal_ge2um_A_2D.0002.hdf5')
 % HDF5 mncal_ge2um_A_2D.0002.hdf5 
@@ -49,10 +52,16 @@ errors.code = 0;
 scandata = [];
 
 %% hdf5 validation
-% At minimum, we need to:
-%    1. Check, nominally at least, that this is APS data with the expected
-%    format.
-%    2. find group names before invoking them, such as MCA 1.
+% NOTE: In the following, I rely on hard-coded Dataset names. An alternative
+% would be to loop through the datasets looking at the 'DATASET_TYPE'
+% attribute of each, and finding the match to 'DETECTORS', 'MCA', 'X', and
+% 'Y' (for 2D scans). But since these have a one-to-one correspondence, I
+% am not bothering to do so. 
+%
+% Instead of checking the type of each dataset, I check below -- in
+% advance, that all of the datasets I want are present, within the one (and
+% assumed only) top-level group. 
+
 mca_dataset = 'MCA 1';
 header_att = 'Header';
 det_dataset = 'Detectors';
@@ -80,10 +89,6 @@ else
     return
 end
 
-% NOTE: The following relies on hard-coded Dataset names. An alternative
-% would be to loop through the datasets looking at the 'DATASET_TYPE'
-% attribute of each, and finding the match to 'DETECTORS', 'MCA', 'X', and
-% 'Y' (for 2D scans). But at the moment I don't see the need. 
 datasets = {fileinfo.Groups.Datasets.Name};
 if ~any(strcmp(det_dataset, datasets)) || ...
         ~any(strcmp(mca_dataset, datasets)) || ...
@@ -107,16 +112,13 @@ scandata = struct('spec', spec, 'mcadata',[], 'mcaformat', 'aps_hdf5', 'dead', s
     'depth', [], 'channels', [], 'mcafile', [mcaname extn], 'ecal', [], 'energy', [], ...
     'specfile',[mcaname extn], 'dtcorr', [], 'dtdel', [], 'image', {{}});
 
-%%
-% The rational way to do the following would be to look through
-% DATASET_TYPE attributes of each dataset in order to find the Name of the
-% MCA dataset, or warn / pick if there are more than one.
-%
-% 
+%% Import data, and shove into the data structure expected by mcaview.
+
 mcadata = h5read(mcafile, [filegroup '/' mca_dataset]);
 scandata.ecal = [0 1 0];
 header_cell = h5readatt(mcafile, filegroup, header_att);
-header = header_cell{1};            % Should be a big header string...
+% Next line grabs string from cell output, and excises carriage returns
+header = strrep(header_cell{1}, char(13), ''); 
 
 mcadata_dims = size(mcadata);   % Expect this to be MCA_channels x D1, or MCA_channels x D1 x D2
 MCA_channels = mcadata_dims(1);
@@ -124,13 +126,10 @@ scandata.spec.size = mcadata_dims(2:end);
 spectra = prod(scandata.spec.size);
 
 channels = (0:(MCA_channels-1))';
-
 scandata.spec.header = header;
 scandata.spec.npts = spectra;
 
 
-% The detectors array happens to be stored in column format, but mcaview
-% expects row format. So transpose.
 scandata.spec.data = double(h5read(mcafile, [filegroup '/' 'Detectors']));
 
 scandata.spec.columns = size(scandata.spec.data, 2);
@@ -142,6 +141,9 @@ mot1_cell = h5readatt(mcafile, [filegroup '/X Positions'], 'Motor Info');
 scandata.spec.mot1 = mot1_cell{1};
 
 if scandata.spec.dims == 1 
+    % The detectors array  -- for 1D data (!) is stored in column format, but mcaview
+    % expects row format. So transpose -- but do a check in case this
+    % changes later...
     if size(scandata.spec.data, 1) == scandata.spec.npts && ...
         size(scandata.spec.data, 2) == scandata.spec.columns   
         scandata.spec.data = scandata.spec.data';
@@ -175,8 +177,6 @@ else
     errors = add_error(errors, 2, ...
         sprintf('Error reading %s: Cannot handle > 2D scans', mcafile));
 end
-
-
 
 scandata.mcadata = single(mcadata);
 scandata.depth = 1:size(mcadata, 2);
