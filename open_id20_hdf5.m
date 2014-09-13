@@ -119,6 +119,12 @@ scandata.ecal = [0 1 0];
 header_cell = h5readatt(mcafile, filegroup, header_att);
 % Next line grabs string from cell output, and excises carriage returns
 header = strrep(header_cell{1}, char(13), ''); 
+header_info = open_id20_hdf5_parse_head(header);
+header_fields = fieldnames(header_info);
+for k = 1:length(header_fields)
+   scandata.spec = setfield(scandata.spec, ...
+       header_fields{k}, header_info.(header_fields{k})); 
+end
 
 mcadata_dims = size(mcadata);   % Expect this to be MCA_channels x D1, or MCA_channels x D1 x D2
 MCA_channels = mcadata_dims(1);

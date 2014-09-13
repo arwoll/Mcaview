@@ -1,4 +1,23 @@
 function out_struct = open_id20_hdf5_parse_head(header_str)
+% function out_struct = open_id20_hdf5_parse_head(header_str)
+%
+% Parses the more or less standard Labview-type header from ID20 (found
+%        in the hdf5 file in this particular case to extract various
+%        information, especially about the ion chamber voltages and
+%        sensitivities. 
+% 
+% Note that this technique (reading the whole string at once, then using
+% strfind to isolate and parse substrings) is probably much faster than the
+% original method used for ID20 text output.
+% 
+%
+% Note too: 2D scans, for some reason, do not include cttime...
+%
+% TODO:
+%      1. Testing -- Done
+%      2. Add Error Checks.
+%      3. Documentation
+
 out_struct = [];
 
 ion_chambers = struct('name', {}, 'sensitivity', {}, ...
@@ -6,47 +25,108 @@ ion_chambers = struct('name', {}, 'sensitivity', {}, ...
 
 line_starts = strfind(header_str, '#');
 line_feeds = strfind(header_str, char(10));
-k = line_starts(1);
 
-% Clearly, the following is the proper motif for scanning the header.
-% Get Integration time:
-int_time_str = 'Integration time';
-location = strfind(header_str, int_time_str);
-if ~isempty(location)
-    cttime = sscanf(header_str(location + length(int_time_str) : end), '%f', 1);    
+%---------------------------------------------%
+%--------------- Get Count time --------------%
+%---------------------------------------------%
+search_str = 'Integration time';
+location = strfind(header_str, search_str);
+if isempty(location)
+    fprintf('Warning: While parting header -- no Integration time line found\n');
+else
+    field_start = location + length(search_str);
+    field_end = line_feeds(find(line_feeds > location,1));
+    if ~isempty(location)
+        cttime = sscanf(header_str(field_start : field_end), '%f', 1);
+    end
 end
-% Next, get sensitivities, voltages, filters, and (perhaps) energy
 
-%     elseif ~isempty(strfind(partline, 'Sensitivities'))
-%         nextline = [fgets(header_str) char(13)];
-%         fileheader = horzcat(fileheader, nextline);
-%         [tok, partline] = strtok(nextline);
-%         values = textscan(partline(1:end-1), '%s %f %s', 'whitespace', ' \b\t:');
-%         for k = 1:length(values{1})
-%            ion_chambers(k).name = values{1}{k};
-%            ion_chambers(k).sensitivity = values{2}(k);
-%            switch values{3}{k}
-%                case 'nA/V'
-%                    ion_chambers(k).sensitivity = ion_chambers(k).sensitivity * 1e-9;
-%                case 'pA/V'
-%                    ion_chambers(k).sensitivity = ion_chambers(k).sensitivity * 1e-12;
-%            end
-%         end
-%     elseif ~isempty(strfind(partline, 'Analog Input Voltages'))
-%         ic_names = {ion_chambers.name};
-%         nextline = [fgets(header_str) char(13)];
-%         fileheader = horzcat(fileheader, nextline);
-%         [tok, partline] = strtok(nextline);
-%         values = textscan(partline(1:end-1), '%s %f %f', 'whitespace', ' \b\t:/');
-%         for k = 1:length(values{1})
-%            this_ic = strcmp(values{1}{k}, ic_names);
-%            if any(this_ic)
-%                ion_chambers(this_ic).V0 = values{2}(k);
-%                ion_chambers(this_ic).V1 = values{3}(k);
-%            end
-%         end
-%     end
-% end
-% 
-% out_struct.ion_chambers = ion_chambers;
-% out_struct.header = fileheader;
+%---------------------------------------------%
+%-------------- Get Sensitivities ------------%
+%---------------------------------------------%
+search_str = 'Sensitivities';
+location = strfind(header_str, search_str);
+if isempty(location)
+    fprintf('Warning: While parting header -- no Integration time line found\n');
+    ics_found = 0;
+else
+    field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
+    field_end = line_feeds(find(line_feeds > field_start,1));
+    foo = textscan(header_str(field_start : field_end), ...
+        '%s %f %s', 'whitespace', ' \b\t:');
+    for k = 1:length(foo{1})
+        ion_chambers(k).name = foo{1}{k};
+        ion_chambers(k).sensitivity = foo{2}(k);
+        switch foo{3}{k}
+            case 'nA/V'
+                ion_chambers(k).sensitivity = ion_chambers(k).sensitivity * 1e-9;
+            case 'pA/V'
+                ion_chambers(k).sensitivity = ion_chambers(k).sensitivity * 1e-12;
+        end
+    end
+    ics_found = 1;
+end
+
+%---------------------------------------------%
+%--------- Get Start/End IC Voltages ---------%
+%---------------------------------------------%
+search_str = 'Analog Input Voltages';
+location = strfind(header_str, search_str);
+if isempty(location) || ~ics_found
+    fprintf('Warnign : While parting header -- Analog Input Voltages not found\n');
+else
+    field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
+    field_end = line_feeds(find(line_feeds > field_start,1));
+    ic_names = {ion_chambers.name};
+    foo = textscan(header_str(field_start : field_end), ...
+        '%s %f %f', 'whitespace', ' \b\t:/');
+    for k = 1:length(foo{1})
+        this_ic = strcmp(foo{1}{k}, ic_names);
+        if any(this_ic)
+            ion_chambers(this_ic).V0 = foo{2}(k);
+            ion_chambers(this_ic).V1 = foo{3}(k);
+        end
+    end
+end
+
+%---------------------------------------------%
+%--------------- Get XIA Filters -------------%
+%---------------------------------------------%
+search_str = 'XIA Filters';
+location = strfind(header_str, search_str);
+if isempty(location)
+    fprintf('While parting header -- XIA Filters not found\n');
+    return
+else
+    field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
+    field_end = line_feeds(find(line_feeds > field_start,1));
+    foo = textscan(header_str(field_start : field_end), ...
+        '%s %s', 'whitespace', ' \b\t:');
+    inouts = strcmp(foo{2},'IN');
+    vals = [1 2 4 8];
+    filters = vals * inouts;
+end
+
+%---------------------------------------------%
+%--------------- XIA Shutter Unit ------------%
+%---------------------------------------------%
+search_str = 'XIA Shutter Unit';
+location = strfind(header_str, search_str);
+if isempty(location)
+    fprintf('While parting header -- XIA Shutter Unit not found\n');
+    return
+else
+    field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
+    field_end = line_feeds(find(line_feeds > field_start,1));
+    foo = textscan(header_str(field_start : field_end), ...
+        '%s %s', 'whitespace', ' \b\t:');
+    inouts = strcmp(foo{2},'IN');
+    vals = [1 2];
+    shutters = vals * inouts;
+end
+
+out_struct.ion_chambers = ion_chambers;
+out_struct.xia_filters = filters;
+out_struct.xia_shut = shutters;
+
+
