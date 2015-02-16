@@ -53,7 +53,7 @@ else
     field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
     field_end = line_feeds(find(line_feeds > field_start,1));
     foo = textscan(header_str(field_start : field_end), ...
-        '%s %f %s', 'whitespace', ' \b\t:');
+        '%s %f %s', 'Delimiter', {' ','\t','\b', ':'}, 'MultipleDelimsAsOne', 1);
     for k = 1:length(foo{1})
         ion_chambers(k).name = foo{1}{k};
         ion_chambers(k).sensitivity = foo{2}(k);
@@ -79,7 +79,7 @@ else
     field_end = line_feeds(find(line_feeds > field_start,1));
     ic_names = {ion_chambers.name};
     foo = textscan(header_str(field_start : field_end), ...
-        '%s %f %f', 'whitespace', ' \b\t:/');
+        '%s %f %f','Delimiter', {' ','\t','\b', ':', '/'}, 'MultipleDelimsAsOne', 1);
     for k = 1:length(foo{1})
         this_ic = strcmp(foo{1}{k}, ic_names);
         if any(this_ic)
@@ -100,8 +100,8 @@ if isempty(location)
 else
     field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
     field_end = line_feeds(find(line_feeds > field_start,1));
-    foo = textscan(header_str(field_start : field_end), ...
-        '%s %s', 'whitespace', ' \b\t:');
+    foo = textscan(header_str(field_start : field_end),  '%s %s', ...
+        'Delimiter', {' ','\t','\b', ':'}, 'MultipleDelimsAsOne', 1);
     inouts = strcmp(foo{2},'IN');
     vals = [1 2 4 8];
     filters = vals * inouts;
@@ -118,8 +118,8 @@ if isempty(location)
 else
     field_start = line_starts(find(line_starts > location, 1)) + 1; % start of next line, omitting leading '#'
     field_end = line_feeds(find(line_feeds > field_start,1));
-    foo = textscan(header_str(field_start : field_end), ...
-        '%s %s', 'whitespace', ' \b\t:');
+    foo = textscan(header_str(field_start : field_end),  '%s %s', ...
+        'Delimiter', {' ','\t','\b', ':'}, 'MultipleDelimsAsOne', 1);
     inouts = strcmp(foo{2},'IN');
     vals = [1 2];
     shutters = vals * inouts;
