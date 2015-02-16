@@ -1,0 +1,14 @@
+This is a list of functions in Mcaview that should be eliminated, in favor of using the versions in Matlab_Xray_Utils:
+
+XRF: 
+splint.m
+elamdb.mat
+
+Analysis: 
+row.m
+column.m
+find_peak.m (check dependency!)
+
+
+Note: get_fluorescence, in Mcaview, should be moved to XRF. But is not there currently
+
