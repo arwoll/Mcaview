@@ -106,6 +106,8 @@ for k = 1:2:nvarargin
             %          chess3 (all scan spectra in file <specfile>_###.mca)
             %          chess1_sp (special format <specfile>_#.#.mca for
             %          multiple mcas)
+            %          f3 (all scan spectra in a single, spec-style mca
+            %          file <specfile>.scan<N>.<mcaid>.mca
             mcaformat = varargin{k+1};
         case 'scan'
             specscan = varargin{k+1};
@@ -120,12 +122,12 @@ end
 
 [mcapath, mcaname, extn] = fileparts(mcafile);
 
-if any(strcmp(mcaformat, {'', 'chess1', 'chess3','chess_sp'}))
+if any(strcmp(mcaformat, {'', 'chess1', 'chess3','chess_sp'}))  %Why not spec, g2, f3 here??
     mcafid = fopen(mcafile, 'rt');
     first = fgetl(mcafid);
     if strcmp(first(1:2), '#F')
         % This is an mca file with spec info.  Prompt for which type...
-        mcaformat = {'spec', 'g2'};
+        mcaformat = {'spec', 'g2', 'f3'};
     else
         if regexp(mcaname, '^[\w\.]+\.\d+')
             mcaformat = 'chess_sp';
@@ -419,7 +421,7 @@ if exist(fullmatfile, 'file')
     overwrite = questdlg(sprintf('Overwrite existing file %s?', ...
         fullmatfile), 'Overwrite?', 'Yes', 'No', 'Yes');
     if strcmp(overwrite, 'Yes')
-        save(fullmatfile,'scandata');
+%        save(fullmatfile,'scandata');
     end
 else
     save(fullmatfile,'scandata');
